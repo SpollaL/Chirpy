@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"sync/atomic"
@@ -10,9 +11,10 @@ func main() {
 	apiCfg := apiConfig{fileserverHits: atomic.Int32{}}
 	mux := http.NewServeMux()
 	mux.Handle("/app/", apiCfg.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(".")))))
-	mux.HandleFunc("/healthz/", healthz)
-	mux.HandleFunc("/metrics/", apiCfg.metrics)
-	mux.HandleFunc("/reset/", apiCfg.reset)
+	mux.HandleFunc("GET /api/healthz", healthz)
+	mux.HandleFunc("GET /admin/metrics", apiCfg.HandleMetrics)
+	mux.HandleFunc("POST /admin/reset", apiCfg.HandleReset)
+	mux.HandleFunc("POST /api/validate_chirp", HandleChirpValidation) 
 	server := http.Server{Handler: mux, Addr: ":8080"}
 	server.ListenAndServe()
 }
@@ -34,11 +36,40 @@ func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 	})
 }
 
-func (cfg *apiConfig) metrics(w http.ResponseWriter, _ *http.Request) {
-	content := fmt.Sprintf("Hits: %v", cfg.fileserverHits.Load())
+func (cfg *apiConfig) HandleMetrics(w http.ResponseWriter, _ *http.Request) {
+	content := fmt.Sprintf(`<html>
+  <body>
+    <h1>Welcome, Chirpy Admin</h1>
+    <p>Chirpy has been visited %d times!</p>
+  </body>
+</html>`, cfg.fileserverHits.Load())
+	w.Header().Set("Content-Type", "text/html")
 	w.Write([]byte(content))
 }
 
-func (cfg *apiConfig) reset(_ http.ResponseWriter, _ *http.Request) {
+func HandleChirpValidation(w http.ResponseWriter, req *http.Request) {
+	type Chirp struct {
+		Body string `json:"body"`
+	}
+	decoder := json.NewDecoder(req.Body)
+	chirp := Chirp{}
+	err := decoder.Decode(&chirp)
+	w.Header().Set("Content-Type", "text/html")
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(`{"error": "Unable to decode json body"}`))
+		return
+	}
+	if len(chirp.Body) > 140 {
+		w.WriteHeader(400)
+		w.Write([]byte(`{"error": "Chirp is too long. Should be less than 140 characters"}`))
+		return
+	} 
+
+	w.WriteHeader(200)
+	w.Write([]byte(`{"valid": true}`))
+}
+
+func (cfg *apiConfig) HandleReset(_ http.ResponseWriter, _ *http.Request) {
 	cfg.fileserverHits.Store(0)
 }
