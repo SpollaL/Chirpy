@@ -1,15 +1,29 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"sync/atomic"
+
+	"github.com/SpollaL/Chirpy/internal/database"
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
 func main() {
-	apiCfg := apiConfig{fileserverHits: atomic.Int32{}}
+	godotenv.Load()
+	dbURL := os.Getenv("DB_URL")
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		errors.New("Could not open connection to database")
+	}
+	dbQueries := database.New(db)
+	apiCfg := apiConfig{fileserverHits: atomic.Int32{}, queries: dbQueries}
 	mux := http.NewServeMux()
 	mux.Handle("/app/", apiCfg.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(".")))))
 	mux.HandleFunc("GET /api/healthz", healthz)
@@ -28,6 +42,7 @@ func healthz(w http.ResponseWriter, _ *http.Request) {
 
 type apiConfig struct {
 	fileserverHits atomic.Int32
+	queries *database.Queries
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
