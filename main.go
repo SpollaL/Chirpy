@@ -37,6 +37,8 @@ func main() {
 	mux.HandleFunc("GET /admin/metrics", apiCfg.HandleMetrics)
 	mux.HandleFunc("POST /admin/reset", apiCfg.HandleReset)
 	mux.HandleFunc("POST /api/chirps", apiCfg.HandleChirp)
+	mux.HandleFunc("GET /api/chirps", apiCfg.HandleGetAllChirps)
+	mux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.HandleGetChirp)
 	mux.HandleFunc("POST /api/users", apiCfg.HandleUserCreation)
 	server := http.Server{Handler: mux, Addr: ":8080"}
 	server.ListenAndServe()
@@ -177,5 +179,77 @@ func (cfg *apiConfig) HandleUserCreation(w http.ResponseWriter, r *http.Request)
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(201)
+	w.Write(res)
+}
+
+func (cfg *apiConfig) HandleGetAllChirps(w http.ResponseWriter, r *http.Request) {
+	type ResChirp struct {
+		ID        uuid.UUID `json:"id"`
+		CreatedAt time.Time `json:"created_at"`
+		UpdatedAt time.Time `json:"updated_at"`
+		Body      string    `json:"body"`
+		UserID    uuid.UUID `json:"user_id"`
+	}
+	resChirps := []ResChirp{}
+	dbChirps, err := cfg.queries.GetChirps(r.Context())
+	if err != nil {
+		w.WriteHeader(500)
+		fmt.Fprintf(w, "Could not get chirps from database: %v", err)
+		return
+	}
+	for _, dbChirp := range dbChirps {
+		resChirp := ResChirp{
+			ID:        dbChirp.ID,
+			CreatedAt: dbChirp.CreatedAt,
+			UpdatedAt: dbChirp.UpdatedAt,
+			Body:      dbChirp.Body,
+			UserID:    dbChirp.UserID,
+		}
+		resChirps = append(resChirps, resChirp)
+	}
+	res, err := json.Marshal(resChirps)
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(`{"error": "Unable to marshal response body"}`))
+		return
+	}
+	w.WriteHeader(200)
+	w.Write(res)
+}
+
+func (cfg *apiConfig) HandleGetChirp(w http.ResponseWriter, r *http.Request) {
+	type ResChirp struct {
+		ID        uuid.UUID `json:"id"`
+		CreatedAt time.Time `json:"created_at"`
+		UpdatedAt time.Time `json:"updated_at"`
+		Body      string    `json:"body"`
+		UserID    uuid.UUID `json:"user_id"`
+	}
+	chirpID, err := uuid.Parse(r.PathValue("chirpID"))
+	if err != nil {
+		w.WriteHeader(500)
+		fmt.Fprintf(w, "Could not parse ID %v: %v", chirpID, err)
+		return
+	}
+	dbChirp, err := cfg.queries.GetChirp(r.Context(), chirpID)
+	resChirp := ResChirp{
+		ID:        dbChirp.ID,
+		CreatedAt: dbChirp.CreatedAt,
+		UpdatedAt: dbChirp.UpdatedAt,
+		Body:      dbChirp.Body,
+		UserID:    dbChirp.UserID,
+	}
+	if err != nil {
+		w.WriteHeader(404)
+		fmt.Fprintf(w, "Could not get chirp with ID %v: %v", chirpID, err)
+		return
+	}
+	res, err := json.Marshal(resChirp)
+	if err != nil {
+		w.WriteHeader(500)
+		fmt.Fprintf(w, "Could marshal chirp with ID %v: %v", chirpID, err)
+		return
+	}
+	w.WriteHeader(200)
 	w.Write(res)
 }
