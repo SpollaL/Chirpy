@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"time"
 
@@ -25,7 +24,7 @@ func (cfg *apiConfig) HandleUserCreation(w http.ResponseWriter, r *http.Request)
 	reqStruct := &reqUser{}
 	err := decoder.Decode(reqStruct)
 	if err != nil {
-		log.Fatalf("Could not decode json request: %v", err)
+		respondWithError(w, http.StatusInternalServerError, "Could not decode parameters", err)
 	}
 	dbUser, err := cfg.queries.CreateUser(r.Context(), reqStruct.Email)
 	jsonUser := resUser{
@@ -34,11 +33,5 @@ func (cfg *apiConfig) HandleUserCreation(w http.ResponseWriter, r *http.Request)
 		UpdatedAt: dbUser.UpdatedAt,
 		Email:     dbUser.Email,
 	}
-	res, err := json.Marshal(jsonUser)
-	if err != nil {
-		log.Fatalf("Could not marshal json response: %v", err)
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(201)
-	w.Write(res)
+	respondWithJson(w, http.StatusCreated, jsonUser)
 }

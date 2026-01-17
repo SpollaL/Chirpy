@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -36,6 +37,15 @@ func ReplaceProfane(s string) string {
 	return s
 }
 
+func validateChirp(body string) (string, error) {
+	const maxChirpLenght = 140
+	if len(body) > maxChirpLenght {
+		return "", errors.New("Chirp is too long")
+	}
+	cleaned_body := ReplaceProfane(body)
+	return cleaned_body, nil
+}
+
 func (cfg *apiConfig) HandleChirp(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	chirp := reqChirp{}
@@ -43,21 +53,19 @@ func (cfg *apiConfig) HandleChirp(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	if err != nil {
-		w.WriteHeader(500)
-		w.Write([]byte(`{"error": "Unable to decode json body"}`))
+		respondWithError(w, http.StatusInternalServerError, "couldn't decode parameters", err)
 		return
 	}
 
-	if len(chirp.Body) > 140 {
-		w.WriteHeader(400)
-		w.Write([]byte(`{"error": "Chirp is too long. Should be less than 140 characters"}`))
+  cleaned, err := validateChirp(chirp.Body)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, err.Error(), err)
 		return
 	}
 
-	chirp.Body = ReplaceProfane(chirp.Body)
 	dbChirp, err := cfg.queries.CreateChirp(
 		r.Context(),
-		database.CreateChirpParams{Body: chirp.Body, UserID: chirp.UserId},
+		database.CreateChirpParams{Body: cleaned, UserID: chirp.UserId},
 	)
 	resChirp := resChirp{
 		ID:        dbChirp.ID,
@@ -66,13 +74,5 @@ func (cfg *apiConfig) HandleChirp(w http.ResponseWriter, r *http.Request) {
 		Body:      dbChirp.Body,
 		UserID:    dbChirp.UserID,
 	}
-	res, err := json.Marshal(resChirp)
-	if err != nil {
-		w.WriteHeader(500)
-		w.Write([]byte(`{"error": "Unable to marshal response body"}`))
-		return
-	}
-
-	w.WriteHeader(201)
-	w.Write(res)
+	respondWithJson(w, http.StatusCreated, resChirp)
 }
