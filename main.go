@@ -17,6 +17,30 @@ import (
 	_ "github.com/lib/pq"
 )
 
+type reqChirp struct {
+	Body   string    `json:"body"`
+	UserId uuid.UUID `json:"user_id"`
+}
+
+type resChirp struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Body      string    `json:"body"`
+	UserID    uuid.UUID `json:"user_id"`
+}
+
+type reqUser struct {
+	Email string `json:"email"`
+}
+
+type resUser struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Email     string    `json:"email"`
+}
+
 func main() {
 	godotenv.Load()
 	dbURL := os.Getenv("DB_URL")
@@ -86,19 +110,8 @@ func (cfg *apiConfig) HandleReset(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cfg *apiConfig) HandleChirp(w http.ResponseWriter, r *http.Request) {
-	type Chirp struct {
-		Body   string    `json:"body"`
-		UserId uuid.UUID `json:"user_id"`
-	}
-	type ResChirp struct {
-		ID        uuid.UUID `json:"id"`
-		CreatedAt time.Time `json:"created_at"`
-		UpdatedAt time.Time `json:"updated_at"`
-		Body      string    `json:"body"`
-		UserID    uuid.UUID `json:"user_id"`
-	}
 	decoder := json.NewDecoder(r.Body)
-	chirp := Chirp{}
+	chirp := reqChirp{}
 	err := decoder.Decode(&chirp)
 
 	w.Header().Set("Content-Type", "application/json")
@@ -119,7 +132,7 @@ func (cfg *apiConfig) HandleChirp(w http.ResponseWriter, r *http.Request) {
 		r.Context(),
 		database.CreateChirpParams{Body: chirp.Body, UserID: chirp.UserId},
 	)
-	resChirp := ResChirp{
+	resChirp := resChirp{
 		ID:        dbChirp.ID,
 		CreatedAt: dbChirp.CreatedAt,
 		UpdatedAt: dbChirp.UpdatedAt,
@@ -151,23 +164,14 @@ func ReplaceProfane(s string) string {
 }
 
 func (cfg *apiConfig) HandleUserCreation(w http.ResponseWriter, r *http.Request) {
-	type ReqStruct struct {
-		Email string `json:"email"`
-	}
-	type User struct {
-		ID        uuid.UUID `json:"id"`
-		CreatedAt time.Time `json:"created_at"`
-		UpdatedAt time.Time `json:"updated_at"`
-		Email     string    `json:"email"`
-	}
 	decoder := json.NewDecoder(r.Body)
-	reqStruct := &ReqStruct{}
+	reqStruct := &reqUser{}
 	err := decoder.Decode(reqStruct)
 	if err != nil {
 		log.Fatalf("Could not decode json request: %v", err)
 	}
 	dbUser, err := cfg.queries.CreateUser(r.Context(), reqStruct.Email)
-	jsonUser := User{
+	jsonUser := resUser{
 		ID:        dbUser.ID,
 		CreatedAt: dbUser.CreatedAt,
 		UpdatedAt: dbUser.UpdatedAt,
@@ -183,14 +187,7 @@ func (cfg *apiConfig) HandleUserCreation(w http.ResponseWriter, r *http.Request)
 }
 
 func (cfg *apiConfig) HandleGetAllChirps(w http.ResponseWriter, r *http.Request) {
-	type ResChirp struct {
-		ID        uuid.UUID `json:"id"`
-		CreatedAt time.Time `json:"created_at"`
-		UpdatedAt time.Time `json:"updated_at"`
-		Body      string    `json:"body"`
-		UserID    uuid.UUID `json:"user_id"`
-	}
-	resChirps := []ResChirp{}
+	resChirps := []resChirp{}
 	dbChirps, err := cfg.queries.GetChirps(r.Context())
 	if err != nil {
 		w.WriteHeader(500)
@@ -198,7 +195,7 @@ func (cfg *apiConfig) HandleGetAllChirps(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	for _, dbChirp := range dbChirps {
-		resChirp := ResChirp{
+		resChirp := resChirp{
 			ID:        dbChirp.ID,
 			CreatedAt: dbChirp.CreatedAt,
 			UpdatedAt: dbChirp.UpdatedAt,
@@ -218,13 +215,6 @@ func (cfg *apiConfig) HandleGetAllChirps(w http.ResponseWriter, r *http.Request)
 }
 
 func (cfg *apiConfig) HandleGetChirp(w http.ResponseWriter, r *http.Request) {
-	type ResChirp struct {
-		ID        uuid.UUID `json:"id"`
-		CreatedAt time.Time `json:"created_at"`
-		UpdatedAt time.Time `json:"updated_at"`
-		Body      string    `json:"body"`
-		UserID    uuid.UUID `json:"user_id"`
-	}
 	chirpID, err := uuid.Parse(r.PathValue("chirpID"))
 	if err != nil {
 		w.WriteHeader(500)
@@ -232,7 +222,7 @@ func (cfg *apiConfig) HandleGetChirp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	dbChirp, err := cfg.queries.GetChirp(r.Context(), chirpID)
-	resChirp := ResChirp{
+	resChirp := resChirp{
 		ID:        dbChirp.ID,
 		CreatedAt: dbChirp.CreatedAt,
 		UpdatedAt: dbChirp.UpdatedAt,
