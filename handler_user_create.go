@@ -5,11 +5,14 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/SpollaL/Chirpy/internal/auth"
+	"github.com/SpollaL/Chirpy/internal/database"
 	"github.com/google/uuid"
 )
 
 type reqUser struct {
-	Email string `json:"email"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 type resUser struct {
@@ -26,7 +29,17 @@ func (cfg *apiConfig) HandleUserCreation(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Could not decode parameters", err)
 	}
-	dbUser, err := cfg.queries.CreateUser(r.Context(), reqStruct.Email)
+	hashedPassword, err := auth.HashPassword(reqStruct.Password)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Could not hash password", err)
+	}
+	dbUser, err := cfg.queries.CreateUser(
+		r.Context(),
+		database.CreateUserParams{Email: reqStruct.Email, HashedPassword: hashedPassword},
+	)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Could not create user", err)
+	}
 	jsonUser := resUser{
 		ID:        dbUser.ID,
 		CreatedAt: dbUser.CreatedAt,
