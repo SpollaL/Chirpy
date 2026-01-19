@@ -16,19 +16,26 @@ type apiConfig struct {
 	fileserverHits atomic.Int32
 	queries        *database.Queries
 	platform       string
+	secret_key     string
 }
 
 func main() {
 	godotenv.Load()
 	dbURL := os.Getenv("DB_URL")
 	platform := os.Getenv("PLATFORM")
+	secret_key := os.Getenv("SECRET_KEY")
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Fatal("Could not open connection to database")
 		return
 	}
 	dbQueries := database.New(db)
-	apiCfg := apiConfig{fileserverHits: atomic.Int32{}, queries: dbQueries, platform: platform}
+	apiCfg := apiConfig{
+		fileserverHits: atomic.Int32{},
+		queries:        dbQueries,
+		platform:       platform,
+		secret_key:     secret_key,
+	}
 	mux := http.NewServeMux()
 	mux.Handle(
 		"/app/",

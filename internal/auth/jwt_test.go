@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"net/http"
 	"testing"
 	"time"
 
@@ -54,3 +55,27 @@ func TestJwtTokenValidationWrongSecret(t *testing.T) {
 		t.Fatalf("expected error for wrong secret, got nil (userID=%v)", tokenUserId)
 	}
 }
+
+func TestGetBearerToken(t *testing.T) {
+	request := http.Request{}
+	request.Header = map[string][]string{
+		"Authorization": {"Bearer thehorseisonthestable"},
+	}
+	token, err := GetBearerToken(request.Header)
+	if err != nil {
+		t.Fatalf("GetBearerToken should not fail with error: %v", err)
+	}
+	if token != "thehorseisonthestable" {
+		t.Fatalf("Token should be thehorseisonthestable but is: %s", token)
+	}
+}
+
+
+
+
+
+
+
+
+
+

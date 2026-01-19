@@ -7,13 +7,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/SpollaL/Chirpy/internal/auth"
 	"github.com/SpollaL/Chirpy/internal/database"
 	"github.com/google/uuid"
 )
 
 type reqChirp struct {
 	Body   string    `json:"body"`
-	UserId uuid.UUID `json:"user_id"`
 }
 
 type resChirp struct {
@@ -47,9 +47,19 @@ func validateChirp(body string) (string, error) {
 }
 
 func (cfg *apiConfig) HandleChirp(w http.ResponseWriter, r *http.Request) {
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Error validating token", err)
+		return
+	}
+	userID, err := auth.ValidateJWT(token, cfg.secret_key)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Error validating token", err)
+		return
+	}
 	decoder := json.NewDecoder(r.Body)
 	chirp := reqChirp{}
-	err := decoder.Decode(&chirp)
+	err = decoder.Decode(&chirp)
 
 	w.Header().Set("Content-Type", "application/json")
 	if err != nil {
@@ -65,7 +75,7 @@ func (cfg *apiConfig) HandleChirp(w http.ResponseWriter, r *http.Request) {
 
 	dbChirp, err := cfg.queries.CreateChirp(
 		r.Context(),
-		database.CreateChirpParams{Body: cleaned, UserID: chirp.UserId},
+		database.CreateChirpParams{Body: cleaned, UserID: userID},
 	)
 	resChirp := resChirp{
 		ID:        dbChirp.ID,
