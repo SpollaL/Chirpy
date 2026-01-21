@@ -28,10 +28,12 @@ func (cfg *apiConfig) HandleUserCreation(w http.ResponseWriter, r *http.Request)
 	err := decoder.Decode(reqStruct)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Could not decode parameters", err)
+		return
 	}
 	hashedPassword, err := auth.HashPassword(reqStruct.Password)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Could not hash password", err)
+		return
 	}
 	dbUser, err := cfg.queries.CreateUser(
 		r.Context(),
@@ -39,6 +41,7 @@ func (cfg *apiConfig) HandleUserCreation(w http.ResponseWriter, r *http.Request)
 	)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Could not create user", err)
+		return
 	}
 	jsonUser := resUser{
 		ID:        dbUser.ID,

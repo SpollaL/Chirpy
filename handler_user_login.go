@@ -6,13 +6,13 @@ import (
 	"time"
 
 	"github.com/SpollaL/Chirpy/internal/auth"
+	"github.com/SpollaL/Chirpy/internal/database"
 	"github.com/google/uuid"
 )
 
 type reqLogin struct {
-	Email            string `json:"email"`
-	Password         string `json:"password"`
-	ExpiresInSeconds int    `json:"experies_in_seconds"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 type resLogin struct {
@@ -21,6 +21,7 @@ type resLogin struct {
 	UpdatedAt time.Time `json:"updated_at"`
 	Email     string    `json:"email"`
 	Token     string    `json:"token"`
+	RefreshToken string `json:"refresh_token"`
 }
 
 func (cfg *apiConfig) HandleUserLogin(w http.ResponseWriter, r *http.Request) {
@@ -43,24 +44,40 @@ func (cfg *apiConfig) HandleUserLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	const defaultExpiresInSeconds = 60
-	if reqStruct.ExpiresInSeconds == 0 || reqStruct.ExpiresInSeconds > defaultExpiresInSeconds {
-		reqStruct.ExpiresInSeconds = defaultExpiresInSeconds
-	}
 	token, err := auth.MakeJWT(
 		dbUser.ID,
 		cfg.secret_key,
-		time.Duration(reqStruct.ExpiresInSeconds)*time.Second,
+		time.Duration(defaultExpiresInSeconds)*time.Second,
 	)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Could not generate JWT token", err)
 		return
 	}
+	refresh_token, err := auth.MakeRefreshToken()
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Could not generate Refresh token", err)
+		return
+	}
+	const defaultExpiresInDays = 60
+	_, err = cfg.queries.CreateToken(
+		r.Context(),
+		database.CreateTokenParams{
+			Token:     refresh_token,
+			UserID:    dbUser.ID,
+			ExpiresAt: time.Now().AddDate(0, 0, defaultExpiresInDays),
+		},
+	)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Could not generate Refresh token", err)
+		return
+	}
 	jsonUser := resLogin{
-		ID:        dbUser.ID,
-		CreatedAt: dbUser.CreatedAt,
-		UpdatedAt: dbUser.UpdatedAt,
-		Email:     dbUser.Email,
-		Token:     token,
+		ID:           dbUser.ID,
+		CreatedAt:    dbUser.CreatedAt,
+		UpdatedAt:    dbUser.UpdatedAt,
+		Email:        dbUser.Email,
+		Token:        token,
+		RefreshToken: refresh_token,
 	}
 	respondWithJson(w, http.StatusOK, jsonUser)
 }

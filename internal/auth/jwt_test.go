@@ -70,6 +70,13 @@ func TestGetBearerToken(t *testing.T) {
 	}
 }
 
+func TestMakeRefreshToken(t *testing.T) {
+	_, err := MakeRefreshToken()
+	if err != nil {
+		t.Fatalf("Refresh Token should be generated without errors")
+
+	}
+}
 
 
 

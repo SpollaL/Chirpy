@@ -11,6 +11,7 @@ func (cfg *apiConfig) HandleReset(w http.ResponseWriter, r *http.Request) {
 	err := cfg.queries.DeleteUsers(r.Context())
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Failed to restard the database", err)
+		return
 	}
 	cfg.fileserverHits.Store(0)
 	respondWithJson(w, http.StatusOK, "Hits reset to 0 and dataset to initial state")

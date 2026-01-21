@@ -30,10 +30,12 @@ func (cfg *apiConfig) HandleGetChirp(w http.ResponseWriter, r *http.Request) {
 	chirpID, err := uuid.Parse(r.PathValue("chirpID"))
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Could not retrieve chirp", err)
+		return
 	}
 	dbChirp, err := cfg.queries.GetChirp(r.Context(), chirpID)
 	if err != nil {
 		respondWithError(w, http.StatusNotFound, "Could not retrieve chirp", err)
+		return
 	}
 	resChirp := resChirp{
 		ID:        dbChirp.ID,
