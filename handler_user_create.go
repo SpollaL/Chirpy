@@ -16,10 +16,11 @@ type reqUser struct {
 }
 
 type resUser struct {
-	ID        uuid.UUID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Email     string    `json:"email"`
+	ID          uuid.UUID `json:"id"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	Email       string    `json:"email"`
+	IsChirpyRed bool      `json:"is_chirpy_red"`
 }
 
 func (cfg *apiConfig) HandleUserCreation(w http.ResponseWriter, r *http.Request) {
@@ -48,6 +49,7 @@ func (cfg *apiConfig) HandleUserCreation(w http.ResponseWriter, r *http.Request)
 		CreatedAt: dbUser.CreatedAt,
 		UpdatedAt: dbUser.UpdatedAt,
 		Email:     dbUser.Email,
+    IsChirpyRed: dbUser.IsChirpyRed,
 	}
 	respondWithJson(w, http.StatusCreated, jsonUser)
 }

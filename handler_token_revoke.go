@@ -6,7 +6,6 @@ import (
 	"github.com/SpollaL/Chirpy/internal/auth"
 )
 
-
 func (cfg *apiConfig) HandleTokenRevoke(w http.ResponseWriter, r *http.Request) {
 	refresh_token, err := auth.GetBearerToken(r.Header)
 	if err != nil {
