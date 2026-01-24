@@ -29,6 +29,7 @@ func (cfg *apiConfig) HandleUserUpdate(w http.ResponseWriter, r *http.Request) {
 	err = decoder.Decode(&userUpdate)
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Couldn't parse request body", err)
+		return
 	}
 	hashedPassword, err := auth.HashPassword(userUpdate.Password)
 	if err != nil {

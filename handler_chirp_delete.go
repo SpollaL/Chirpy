@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 )
 
-
 func (cfg *apiConfig) HandleChirpDelete(w http.ResponseWriter, r *http.Request) {
 	token, err := auth.GetBearerToken(r.Header)
 	if err != nil {
@@ -22,7 +21,7 @@ func (cfg *apiConfig) HandleChirpDelete(w http.ResponseWriter, r *http.Request) 
 	}
 	chirpID, err := uuid.Parse(r.PathValue("chirpID"))
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Could not retrieve chirp", err)
+		respondWithError(w, http.StatusBadRequest, "Invalid chirp ID format", err)
 		return
 	}
 	dbChirp, err := cfg.queries.GetChirp(r.Context(), chirpID)
@@ -31,7 +30,7 @@ func (cfg *apiConfig) HandleChirpDelete(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if userID != dbChirp.UserID {
-		respondWithError(w, http.StatusForbidden, "Unauthorized request to delete token", errors.New("Could not delete chirp"))
+		respondWithError(w, http.StatusForbidden, "You can only delete your own chirps", errors.New("authorization failed"))
 		return
 	}
 	err = cfg.queries.DeleteChirp(r.Context(), chirpID)
