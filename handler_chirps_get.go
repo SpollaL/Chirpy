@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"sort"
 
 	"github.com/SpollaL/Chirpy/internal/database"
 	"github.com/google/uuid"
@@ -39,6 +40,13 @@ func (cfg *apiConfig) HandleGetAllChirps(w http.ResponseWriter, r *http.Request)
 			UserID:    dbChirp.UserID,
 		}
 		resChirps = append(resChirps, resChirp)
+	}
+	sortMethod := r.URL.Query().Get("sort")
+	if (sortMethod != "") && (sortMethod == "desc") {
+		sort.Slice(
+			resChirps,
+			func(i, j int) bool { return resChirps[i].CreatedAt.After(resChirps[j].CreatedAt) },
+		)
 	}
 	respondWithJson(w, http.StatusOK, resChirps)
 }
