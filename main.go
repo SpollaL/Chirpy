@@ -52,6 +52,7 @@ func main() {
 	mux.HandleFunc("POST /api/login", apiCfg.HandleUserLogin)
 	mux.HandleFunc("POST /api/refresh", apiCfg.HandleTokenRefresh)
 	mux.HandleFunc("POST /api/revoke", apiCfg.HandleTokenRevoke)
+	mux.HandleFunc("DELETE /api/chirps/{chirpID}", apiCfg.HandleChirpDelete)
 	server := http.Server{Handler: mux, Addr: ":8080"}
 	server.ListenAndServe()
 }
