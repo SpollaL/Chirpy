@@ -3,11 +3,28 @@ package main
 import (
 	"net/http"
 
+	"github.com/SpollaL/Chirpy/internal/database"
 	"github.com/google/uuid"
 )
 
 func (cfg *apiConfig) HandleGetAllChirps(w http.ResponseWriter, r *http.Request) {
-	dbChirps, err := cfg.queries.GetChirps(r.Context())
+	authorIdString := r.URL.Query().Get("author_id")
+	var (
+		dbChirps []database.Chirp
+		err      error
+	)
+	if authorIdString != "" {
+		authorID, err := uuid.Parse(authorIdString)
+		if err != nil {
+			respondWithError(w, http.StatusBadRequest, "Invalid Author ID", err)
+			return
+		}
+
+		dbChirps, err = cfg.queries.GetChirpByAuthor(r.Context(), authorID)
+	} else {
+		dbChirps, err = cfg.queries.GetChirps(r.Context())
+	}
+
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Couldn't retrieve chirps", err)
 		return
